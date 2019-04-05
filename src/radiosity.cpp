@@ -9,7 +9,7 @@
 #include <math.h>
 
 #define MAX(a, b) (a >= b ? a : b)
-#define RAD_INDEX(i, j) (i * mesh->numFaces() + j)
+#define RAD_INDEX(i, j) (i * mesh->numRadiosityFaces() + j)
 
 // ================================================================
 // CONSTRUCTOR & DESTRUCTOR
@@ -55,13 +55,13 @@ void Radiosity::Reset() {
   delete [] radiance;
 
   // create and fill the data structures
-  num_faces = mesh->numFaces();
+  num_faces = mesh->numRadiosityFaces();
   area = new float[num_faces];
   undistributed = new Vec3f[num_faces];
   absorbed = new Vec3f[num_faces];
   radiance = new Vec3f[num_faces];
   for (int i = 0; i < num_faces; i++) {
-    Face *f = mesh->getFace(i);
+    Face *f = mesh->getRadiosityFace(i);
     f->setRadiosityPatchIndex(i);
     setArea(i,f->getArea());
     Vec3f emit = f->getMaterial()->getEmittedColor();
@@ -116,8 +116,8 @@ void Radiosity::ComputeFormFactors() {
   for(int i = 0; i < num_faces; ++i) {
     for(int j = 0; j < num_faces; ++j) {
       if(i == j) continue;
-      Face* fi = mesh->getFace(i);
-      Face* fj = mesh->getFace(j);
+      Face* fi = mesh->getRadiosityFace(i);
+      Face* fj = mesh->getRadiosityFace(j);
       int storageIndex = RAD_INDEX(i, j);
       for(int k = 0; k < samples; ++k) {
         Vec3f pi = k == 0 ? fi->computeCentroid() : fi->RandomPoint();
@@ -168,8 +168,8 @@ float Radiosity::Iterate() {
   Vec3f dbi = getUndistributed(index);
   for(int j = 0; j < num_faces; ++j) {
     if(j == index) continue;
-    Vec3f drad = formfactors[RAD_INDEX(j, index)] * mesh->getFace(j)->getMaterial()->getDiffuseColor() * dbi;
-    Vec3f absorbed = formfactors[RAD_INDEX(j, index)] * (Vec3f(1, 1, 1) - mesh->getFace(j)->getMaterial()->getDiffuseColor()) * dbi;
+    Vec3f drad = formfactors[RAD_INDEX(j, index)] * mesh->getRadiosityFace(j)->getMaterial()->getDiffuseColor() * dbi;
+    Vec3f absorbed = formfactors[RAD_INDEX(j, index)] * (Vec3f(1, 1, 1) - mesh->getRadiosityFace(j)->getMaterial()->getDiffuseColor()) * dbi;
     setUndistributed(j, getUndistributed(j) + drad);
     setRadiance(j, getRadiance(j) + drad);
     setAbsorbed(j, getAbsorbed(j) + absorbed);
@@ -209,7 +209,7 @@ void CollectFacesWithVertex(Vertex *have, Face *f, std::vector<Face*> &faces) {
 
 // different visualization modes
 Vec3f Radiosity::setupHelperForColor(Face *f, int i, int j) {
-  assert (mesh->getFace(i) == f);
+  assert (mesh->getRadiosityFace(i) == f);
   assert (j >= 0 && j < 4);
   if (args->mesh_data->render_mode == RENDER_MATERIALS) {
     return f->getMaterial()->getDiffuseColor();
@@ -258,7 +258,7 @@ int Radiosity::triCount() {
 void Radiosity::packMesh(float* &current) {
   
   for (int i = 0; i < num_faces; i++) {
-    Face *f = mesh->getFace(i);
+    Face *f = mesh->getRadiosityFace(i);
     Vec3f normal = f->computeNormal();
 
     //double avg_s = 0;

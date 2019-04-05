@@ -16,6 +16,7 @@
 #include "ray.h"
 #include "hit.h"
 #include "camera.h"
+#include "utils.h"
 
 
 // =======================================================================
@@ -67,6 +68,10 @@ void Mesh::addPrimitive(Primitive* p) {
   p->addRasterizedFaces(this,args);
 }
 
+void Mesh::addPortal(const Portal &p) {
+  portals.push_back(p);
+}
+
 void Mesh::addFace(Vertex *a, Vertex *b, Vertex *c, Vertex *d, Material *material, enum FACE_TYPE face_type) {
   // create the face
   Face *f = new Face(material);
@@ -107,7 +112,7 @@ void Mesh::addFace(Vertex *a, Vertex *b, Vertex *c, Vertex *d, Material *materia
     original_quads.push_back(f);
     subdivided_quads.push_back(f);
   } else if (face_type == FACE_TYPE_RASTERIZED) {
-    rasterized_primitive_faces.push_back(f); 
+    rasterized_primitive_faces.push_back(f);
   } else {
     assert (face_type == FACE_TYPE_SUBDIVIDED);
     subdivided_quads.push_back(f);
@@ -215,6 +220,24 @@ void Mesh::Load(ArgParser *_args) {
       objfile >> x >> y >> z >> h >> r >> r2;
       assert (active_material != NULL);
       addPrimitive(new CylinderRing(Vec3f(x,y,z),h,r,r2,active_material));
+    } else if (token == "p") {
+      float x, y, z, sx, sy, rx, ry, rz;
+
+      objfile >> x >> y >> z >> sx >> sy >> rx >> ry >> rz;
+      Matrix matrix1 = Matrix::MakeTranslation(Vec3f(x, y, z));
+      matrix1 *= Matrix::MakeScale(Vec3f(sx, sy, 1));
+      matrix1 *= Matrix::MakeXRotation(rx);
+      matrix1 *= Matrix::MakeYRotation(ry);
+      matrix1 *= Matrix::MakeZRotation(rz);
+
+      objfile >> x >> y >> z >> sx >> sy >> rx >> ry >> rz;
+      Matrix matrix2 = Matrix::MakeTranslation(Vec3f(x, y, z));
+      matrix2 *= Matrix::MakeScale(Vec3f(sx, sy, 1));
+      matrix2 *= Matrix::MakeXRotation(rx);
+      matrix2 *= Matrix::MakeYRotation(ry);
+      matrix2 *= Matrix::MakeZRotation(rz);
+
+      addPortal(Portal(matrix1, matrix2));
     } else if (token == "background_color") {
       float r,g,b;
       objfile >> r >> g >> b;
@@ -266,7 +289,7 @@ void Mesh::Load(ArgParser *_args) {
       exit(0);
     }
   }
-  std::cout << " mesh loaded: " << numFaces() << " faces and " << numEdges() << " edges." << std::endl;
+  std::cout << " mesh loaded: " << numRadiosityFaces() << " faces and " << numEdges() << " edges." << std::endl;
 
   if (camera == NULL) {
     std::cout << "NO CAMERA PROVIDED, CREATING DEFAULT CAMERA" << std::endl;
@@ -359,3 +382,116 @@ void Mesh::Subdivision() {
   }
 }
 
+int Mesh::portalTriCount() const { return numPortalSides() * (8 * 3 + 12 + 12 + 12); }
+
+void Mesh::PackPortalMesh(float *&current) const {
+  for (int i = 0; i < numPortalSides(); i++) {
+    const PortalSide &side = getPortalSide(i);
+    Vec3f normal = side.getNormal();
+    Vec3f centroid = side.getCentroid();
+
+    Vec3f a, b, c, d;
+    side.getCorners(a, b, c, d);
+
+    const static Vec3f portalColors[] = {
+      Vec3f(1, 0, 1),
+      Vec3f(1, 0, 0.5f),
+      Vec3f(0.5f, 0, 1),
+      Vec3f(0.66f, 0, 1),
+      // Add more if desired. Just used for telling pairs apart.
+    };
+    Vec3f portalColor = portalColors[(i / 2) % 4];
+    Vec3f wireframeColorFront(0, 1, 1);
+    Vec3f wireframeColorBack(0, 0, 0);
+
+    AddWireFrameTriangle(current,
+      a, b, centroid,
+      normal, normal, normal,
+      wireframeColorFront,
+      portalColor, portalColor, portalColor);
+    AddWireFrameTriangle(current,
+      b, a, centroid,
+      normal, normal, normal,
+      wireframeColorBack,
+      portalColor, portalColor, portalColor);
+    AddWireFrameTriangle(current,
+      b, c, centroid,
+      normal, normal, normal,
+      wireframeColorFront,
+      portalColor, portalColor, portalColor);
+    AddWireFrameTriangle(current,
+      c, b, centroid,
+      normal, normal, normal,
+      wireframeColorBack,
+      portalColor, portalColor, portalColor);
+    AddWireFrameTriangle(current,
+      c, d, centroid,
+      normal, normal, normal,
+      wireframeColorFront,
+      portalColor, portalColor, portalColor);
+    AddWireFrameTriangle(current,
+      d, c, centroid,
+      normal, normal, normal,
+      wireframeColorBack,
+      portalColor, portalColor, portalColor);
+    AddWireFrameTriangle(current,
+      d, a, centroid,
+      normal, normal, normal,
+      wireframeColorFront,
+      portalColor, portalColor, portalColor);
+    AddWireFrameTriangle(current,
+      a, d, centroid,
+      normal, normal, normal,
+      wireframeColorBack,
+      portalColor, portalColor, portalColor);
+
+    {
+
+      Vec3f start(0, 0, 0);
+      Vec3f end = centroid;
+      Vec3f right(1, 0, 0);
+      Vec3f up(0, -1, 0);
+      side.getTransform().TransformDirection(right);
+      side.getTransform().TransformDirection(up);
+
+      float width = 0.01f;
+
+      Vec3f pos[8] = {
+        start + width * right + width * up,
+        start + width * right - width * up,
+        start - width * right + width * up,
+        start - width * right - width * up,
+        end + width * right + width * up,
+        end + width * right - width * up,
+        end - width * right + width * up,
+        end - width * right - width * up,
+      };
+
+      AddBox(current, pos, i % 2 ? Vec3f(1, 1, 0) : Vec3f(0, 0, 1));
+    }
+
+    {
+      Vec3f start = side.getOtherSide()->getCentroid();
+      Vec3f end = centroid;
+      side.getOtherSide()->transferDirection(end);
+      end += start;
+      Vec3f right(1, 0, 0);
+      Vec3f up(0, 0, 1);
+
+      float width = 0.01f;
+
+      Vec3f pos[8] = {
+        start + width * right + width * up,
+        start + width * right - width * up,
+        start - width * right + width * up,
+        start - width * right - width * up,
+        end + width * right + width * up,
+        end + width * right - width * up,
+        end - width * right + width * up,
+        end - width * right - width * up,
+      };
+
+      AddBox(current, pos, i % 2 ? Vec3f(1, 1, 0) : Vec3f(0, 0, 1));
+    }
+  }
+}

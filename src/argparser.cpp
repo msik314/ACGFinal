@@ -217,9 +217,9 @@ void ArgParser::separatePathAndFile(const std::string &input, std::string &path,
 void packMesh(MeshData *mesh_data, RayTracer *raytracer, Radiosity *radiosity, PhotonMapping *photonmapping) {
 
   GLOBAL_args->mesh->camera->glPlaceCamera();
-
+  
   // new desired counts
-  int triCount = raytracer->triCount() + RayTree::triCount() + radiosity->triCount() + photonmapping->triCount();
+  int triCount = GLOBAL_args->mesh->portalTriCount() + raytracer->triCount() + RayTree::triCount() + radiosity->triCount() + photonmapping->triCount();
   int pointCount = photonmapping->pointCount();
 
   GLOBAL_args->mesh_data->meshTriCount = triCount;
@@ -241,6 +241,7 @@ void packMesh(MeshData *mesh_data, RayTracer *raytracer, Radiosity *radiosity, P
   float* current = GLOBAL_args->mesh_data->meshTriData;
   float* current_points = GLOBAL_args->mesh_data->meshPointData;
   
+  GLOBAL_args->mesh->PackPortalMesh(current);
   raytracer->packMesh(current);
   RayTree::packMesh(current);
   radiosity->packMesh(current);

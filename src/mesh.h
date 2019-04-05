@@ -4,6 +4,7 @@
 #include <vector>
 #include "hash.h"
 #include "material.h"
+#include "portal.h"
 
 class Vertex;
 class Edge;
@@ -78,11 +79,24 @@ public:
     assert (i >= 0 && i < numRasterizedPrimitiveFaces());
     return rasterized_primitive_faces[i]; }
 
+  // ========================================
+  // ACCESS THE PORTALS
+  int numPortals() const { return portals.size(); }
+  const Portal& getPortal(int i) const {
+    assert(i >= 0 && i < numPortals());
+    return portals[i]; }
+  int numPortalSides() const { return portals.size() * 2; }
+  const PortalSide& getPortalSide(int i) const {
+    assert(i >= 0 && i < numPortalSides());
+    return portals[i / 2].getSide(i % 2); }
+
+  int portalTriCount() const;
+
   // ==============================================================
   // ACCESS THE SUBDIVIDED QUADS + RASTERIZED FACES (for radiosity)
-  int numFaces() const { return subdivided_quads.size() + rasterized_primitive_faces.size(); }
-  Face* getFace(int i) const {
-    int num_faces = numFaces();
+  int numRadiosityFaces() const { return subdivided_quads.size() + rasterized_primitive_faces.size(); }
+  Face* getRadiosityFace(int i) const {
+    int num_faces = numRadiosityFaces();
     assert (i >= 0 && i < num_faces);
     if (i < (int)subdivided_quads.size()) return subdivided_quads[i];
     else return getRasterizedPrimitiveFace(i-subdivided_quads.size()); }
@@ -103,6 +117,7 @@ public:
   // ===============
   // OTHER FUNCTIONS
   void Subdivision();
+  void PackPortalMesh(float *&current) const;
 
 private:
 
@@ -112,7 +127,8 @@ private:
   Vertex* AddMidVertex(Vertex *a, Vertex *b, Vertex *c, Vertex *d);
   void addFace(Vertex *a, Vertex *b, Vertex *c, Vertex *d, Material *material, enum FACE_TYPE face_type);
   void removeFaceEdges(Face *f);
-  void addPrimitive(Primitive *p); 
+  void addPrimitive(Primitive *p);
+  void addPortal(const Portal& p);
 
   // ==============
   // REPRESENTATION
@@ -141,6 +157,8 @@ private:
   std::vector<Face*> rasterized_primitive_faces;
   // the quads from the .obj file after subdivision
   std::vector<Face*> subdivided_quads;
+  // all portals converted to quads
+  std::vector<Portal> portals;
 };
 
 // ======================================================================
