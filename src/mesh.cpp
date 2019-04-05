@@ -382,7 +382,7 @@ void Mesh::Subdivision() {
   }
 }
 
-int Mesh::portalTriCount() const { return numPortalSides() * (8 * 3 + 12 + 12 + 12); }
+int Mesh::portalTriCount() const { return numPortalSides() * (8 * 3 + 12 + 12); }
 
 void Mesh::PackPortalMesh(float *&current) const {
   for (int i = 0; i < numPortalSides(); i++) {
@@ -398,11 +398,11 @@ void Mesh::PackPortalMesh(float *&current) const {
       Vec3f(1, 0, 0.5f),
       Vec3f(0.5f, 0, 1),
       Vec3f(0.66f, 0, 1),
-      // Add more if desired. Just used for telling pairs apart.
+      // Add more if we get more than four portal-pairs in a scene. Just used for telling pairs apart.
     };
     Vec3f portalColor = portalColors[(i / 2) % 4];
     Vec3f wireframeColorFront(0, 1, 1);
-    Vec3f wireframeColorBack(0, 0, 0);
+    Vec3f wireframeColorBack(1, 0.65f, 0);
 
     AddWireFrameTriangle(current,
       a, b, centroid,
@@ -411,7 +411,7 @@ void Mesh::PackPortalMesh(float *&current) const {
       portalColor, portalColor, portalColor);
     AddWireFrameTriangle(current,
       b, a, centroid,
-      normal, normal, normal,
+      -normal, -normal, -normal,
       wireframeColorBack,
       portalColor, portalColor, portalColor);
     AddWireFrameTriangle(current,
@@ -421,7 +421,7 @@ void Mesh::PackPortalMesh(float *&current) const {
       portalColor, portalColor, portalColor);
     AddWireFrameTriangle(current,
       c, b, centroid,
-      normal, normal, normal,
+      -normal, -normal, -normal,
       wireframeColorBack,
       portalColor, portalColor, portalColor);
     AddWireFrameTriangle(current,
@@ -431,7 +431,7 @@ void Mesh::PackPortalMesh(float *&current) const {
       portalColor, portalColor, portalColor);
     AddWireFrameTriangle(current,
       d, c, centroid,
-      normal, normal, normal,
+      -normal, -normal, -normal,
       wireframeColorBack,
       portalColor, portalColor, portalColor);
     AddWireFrameTriangle(current,
@@ -441,20 +441,24 @@ void Mesh::PackPortalMesh(float *&current) const {
       portalColor, portalColor, portalColor);
     AddWireFrameTriangle(current,
       a, d, centroid,
-      normal, normal, normal,
+      -normal, -normal, -normal,
       wireframeColorBack,
       portalColor, portalColor, portalColor);
 
+    Vec3f dir = centroid;
+    dir.Normalize();
+    Ray ray(Vec3f(0, 0, 0), dir);
+
+    Vec3f hit;
+    side.intersectRay(ray, hit);
+
+    Vec3f right(1, 0, 0);
+    Vec3f up(0, -1, 0);
+    float width = 0.01f;
+
     {
-
       Vec3f start(0, 0, 0);
-      Vec3f end = centroid;
-      Vec3f right(1, 0, 0);
-      Vec3f up(0, -1, 0);
-      side.getTransform().TransformDirection(right);
-      side.getTransform().TransformDirection(up);
-
-      float width = 0.01f;
+      Vec3f end = hit;
 
       Vec3f pos[8] = {
         start + width * right + width * up,
@@ -471,14 +475,11 @@ void Mesh::PackPortalMesh(float *&current) const {
     }
 
     {
-      Vec3f start = side.getOtherSide()->getCentroid();
-      Vec3f end = centroid;
-      side.getOtherSide()->transferDirection(end);
-      end += start;
-      Vec3f right(1, 0, 0);
-      Vec3f up(0, 0, 1);
-
-      float width = 0.01f;
+      Vec3f start = hit;
+      side.transferPoint(start);
+      Vec3f otherDir = dir;
+      side.transferDirection(otherDir);
+      Vec3f end = start + otherDir * 10;
 
       Vec3f pos[8] = {
         start + width * right + width * up,
