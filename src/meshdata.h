@@ -1,6 +1,8 @@
 #ifndef _MESH_DATA_H_
 #define _MESH_DATA_H_
 
+#include "vectors.h"
+
 // ====================================================================
 // ====================================================================
 
@@ -29,7 +31,6 @@ typedef struct float16 {
 #define NUM_RENDER_MODES 6
 enum RENDER_MODE { RENDER_MATERIALS, RENDER_RADIANCE, RENDER_FORM_FACTORS, 
 		   RENDER_LIGHTS, RENDER_UNDISTRIBUTED, RENDER_ABSORBED };
-
 
 typedef struct MeshData {
   
@@ -61,6 +62,10 @@ typedef struct MeshData {
   int raytracing_divs_y;
   int raytracing_x;
   int raytracing_y;
+  
+  // PORTAL PARAMETERS
+  int portal_recursion_depth;
+  Vec3f portal_tint;
   
   // PHOTON MAPPING PARAMETERS
   int num_photons_to_shoot;

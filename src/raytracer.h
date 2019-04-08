@@ -43,10 +43,10 @@ public:
   void setPhotonMapping(PhotonMapping *pm) { photon_mapping = pm; }
 
   // casts a single ray through the scene geometry and finds the closest hit
-  bool CastRay(const Ray &ray, Hit &h, bool use_sphere_patches) const;
+  bool CastRay(const Ray &ray, Hit &h, bool use_sphere_patches, int* portal_out = NULL) const;
 
   // does the recursive work
-  Vec3f TraceRay(Ray &ray, Hit &hit, int bounce_count = 0) const;
+  Vec3f TraceRay(Ray &ray, Hit &hit, int bounce_count = 0, int portal_max = 0) const;
   
   void Init();
 

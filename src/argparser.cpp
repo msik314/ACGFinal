@@ -56,6 +56,10 @@ void ArgParser::DefaultValues() {
   mesh_data->ambient_light = {0.1f,0.1f,0.1f};
   mesh_data->intersect_backfacing = false;
   
+  //PORTAL PARAMETERS
+  mesh_data->portal_recursion_depth = 0;
+  mesh_data->portal_tint = {1, 1, 1};
+  
   // PHOTON MAPPING PARAMETERS
   mesh_data->render_photons = true;
   mesh_data->render_photon_directions = false;
@@ -140,6 +144,17 @@ ArgParser::ArgParser(int argc, const char *argv[], MeshData *_mesh_data) {
       mesh_data->gather_indirect = true;
     } else if (std::string(argv[i]) == std::string("-gloss")) {
       gloss = true;
+    } else if (std::string(argv[i]) == std::string("-portal_recursion_depth")) {
+      i++; assert (i < argc); 
+      mesh_data->portal_recursion_depth = atoi(argv[i]);
+    } else if (std::string(argv[i]) == std::string("-portal_tint")) {
+      i++; assert (i < argc);
+      float r = atof(argv[i]);
+      i++; assert (i < argc);
+      float g = atof(argv[i]);
+      i++; assert (i < argc);
+      float b = atof(argv[i]);
+      mesh_data->portal_tint = {r,g,b};
     } else {
       std::cout << "ERROR: unknown command line argument " 
                 << i << ": '" << argv[i] << "'" << std::endl;

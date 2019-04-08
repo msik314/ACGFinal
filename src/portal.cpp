@@ -39,3 +39,14 @@ bool PortalSide::intersectRay(const Ray &ray, Vec3f &hit) const {
 
   return -0.5f <= localHit.x() && localHit.x() <= 0.5f && -0.5f <= localHit.y() && localHit.y() <= 0.5f;
 }
+
+bool PortalSide::intersectRay(const Ray &ray, Hit &hit) const {
+  Vec3f point;
+  bool success = intersectRay(ray, point);
+  if(!success) return false;
+  
+  Vec3f dir = point - ray.getOrigin();
+  hit.set(dir.Length() / ray.getDirection().Length(), NULL, normal);
+  
+  return true;
+}

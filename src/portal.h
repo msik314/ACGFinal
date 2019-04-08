@@ -4,6 +4,7 @@
 #include "vectors.h"
 #include "matrix.h"
 #include "ray.h"
+#include "hit.h"
 
 class Portal;
 
@@ -13,6 +14,7 @@ public:
   void transferPoint(Vec3f &point) const;
   void transferDirection(Vec3f &dir) const;
   bool intersectRay(const Ray &ray, Vec3f &hit) const;
+  bool intersectRay(const Ray &ray, Hit &hit) const;
 
   const Matrix& getTransform() const { return transform; }
   const Matrix& getInverseTransform() const { return inverseTransform; }
@@ -64,6 +66,7 @@ public:
   const PortalSide& getSide1() const { return side1; }
   const PortalSide& getSide2() const { return side2; }
   const PortalSide& getSide(bool i) const { return i ? side2 : side1; }
+  const PortalSide& getSide(int i) const { return i ? side2 : side1; }
   
 private:
   PortalSide side1;

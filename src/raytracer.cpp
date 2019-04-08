@@ -42,7 +42,7 @@ void RayTracer::Init() {
 
 // ===========================================================================
 // casts a single ray through the scene geometry and finds the closest hit
-bool RayTracer::CastRay(const Ray &ray, Hit &h, bool use_rasterized_patches) const {
+bool RayTracer::CastRay(const Ray &ray, Hit &h, bool use_rasterized_patches, int* portal_out) const {
   bool answer = false;
 
   // intersect each of the quads
@@ -63,16 +63,33 @@ bool RayTracer::CastRay(const Ray &ray, Hit &h, bool use_rasterized_patches) con
       if (mesh->getPrimitive(i)->intersect(ray,h)) answer = true;
     }
   }
+  
+  
+  if(portal_out != NULL) {
+    for(int i = 0; i < mesh->numPortals(); ++i) {
+      Hit temp;
+      if(mesh->getPortal(i / 2).getSide(i % 2).intersectRay(ray, temp)) {
+        if(temp.getT() < h.getT()) {
+          h = temp;
+          *portal_out = i;
+          answer = true;
+        }
+      }
+    }
+  }
+  
   return answer;
 }
 
 // ===========================================================================
 // does the recursive (shadow rays & recursive rays) work
-Vec3f RayTracer::TraceRay(Ray &ray, Hit &hit, int bounce_count) const {
+Vec3f RayTracer::TraceRay(Ray &ray, Hit &hit, int bounce_count, int portal_max) const {
 
   // First cast a ray and see if we hit anything.
   hit = Hit();
-  bool intersect = CastRay(ray,hit,false);
+  int portalIndex = -1;
+  
+  bool intersect = CastRay(ray, hit, false, portal_max ? &portalIndex : NULL);
     
   // if there is no intersection, simply return the background color
   if (intersect == false) {
@@ -81,10 +98,25 @@ Vec3f RayTracer::TraceRay(Ray &ray, Hit &hit, int bounce_count) const {
                  srgb_to_linear(mesh->background_color.b()));
   }
 
+  if(portal_max > 0 && portalIndex >= 0) {
+    Vec3f orig = ray.pointAtParameter(hit.getT());
+    Vec3f direction = ray.getDirection();
+    mesh->getPortal(portalIndex / 2).getSide(portalIndex % 2).transferPoint(orig);
+    mesh->getPortal(portalIndex / 2).getSide(portalIndex % 2).transferDirection(direction);
+    Ray r(orig, direction);
+    Hit newH;
+    Vec3f answer = TraceRay(r, newH, bounce_count, portal_max - 1);
+    RayTree::AddTransmittedSegment(r, 0, newH.getT());
+    return GLOBAL_args->mesh_data->portal_tint * answer;
+  }
+
   // otherwise decide what to do based on the material
   Material *m = hit.getMaterial();
-  assert (m != NULL);
+  //assert (m != NULL);
 
+  if(m == NULL)
+  assert(m != NULL);
+  
   // rays coming from the light source are set to white, don't bother to ray trace further.
   if (m->getEmittedColor().Length() > 0.001) {
     return Vec3f(1,1,1);
@@ -223,7 +255,7 @@ Vec3f VisualizeTraceRay(double i, double j) {
   double y = (j-GLOBAL_args->mesh_data->height/2.0)/double(max_d)+0.5;
   Ray r = GLOBAL_args->mesh->camera->generateRay(x,y); 
   Hit hit;
-  color = GLOBAL_args->raytracer->TraceRay(r,hit,GLOBAL_args->mesh_data->num_bounces);
+  color = GLOBAL_args->raytracer->TraceRay(r,hit,GLOBAL_args->mesh_data->num_bounces, GLOBAL_args->mesh_data->portal_recursion_depth);
   // add that ray for visualization
   RayTree::AddMainSegment(r,0,hit.getT());
   int multiSampleCount = GLOBAL_args->mesh_data->num_antialias_samples;
@@ -236,7 +268,7 @@ Vec3f VisualizeTraceRay(double i, double j) {
     x = (i-GLOBAL_args->mesh_data->width/2.0)/double(max_d) + 0.5 + px;
     y = (j-GLOBAL_args->mesh_data->height/2.0)/double(max_d) + 0.5 + py;
     r = GLOBAL_args->mesh->camera->generateRay(x,y);
-    color += GLOBAL_args->raytracer->TraceRay(r,hit,GLOBAL_args->mesh_data->num_bounces);
+    color += GLOBAL_args->raytracer->TraceRay(r,hit,GLOBAL_args->mesh_data->num_bounces, GLOBAL_args->mesh_data->portal_recursion_depth);
     RayTree::AddMainSegment(r,0,hit.getT());
   }
   
