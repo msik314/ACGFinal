@@ -218,7 +218,7 @@ Vec3f RayTracer::TraceRay(Ray &ray, Hit &hit, int bounce_count, int portal_max) 
     if(GLOBAL_args->gloss) perturbVector(rr, m);
     Ray r(point, rr);
     Hit newH;
-    Vec3f reflected = reflectiveColor * TraceRay(r, newH, bounce_count - 1);
+    Vec3f reflected = reflectiveColor * TraceRay(r, newH, bounce_count - 1, GLOBAL_args->mesh_data->portal_recursion_depth);
     RayTree::AddReflectedSegment(r, 0, newH.getT());
     answer += reflected;
   }
