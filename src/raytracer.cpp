@@ -66,7 +66,7 @@ bool RayTracer::CastRay(const Ray &ray, Hit &h, bool use_rasterized_patches, int
   
   
   if(portal_out != NULL) {
-    for(int i = 0; i < mesh->numPortals(); ++i) {
+    for(int i = 0; i < mesh->numPortals() * 2; ++i) {
       Hit temp;
       if(mesh->getPortal(i / 2).getSide(i % 2).intersectRay(ray, temp)) {
         if(temp.getT() < h.getT()) {
