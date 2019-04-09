@@ -32,6 +32,7 @@ bool PortalSide::intersectRay(const Ray &ray, Vec3f &hit) const {
   if (ndr == 0) return false;
   
   float t = normal.Dot3(centroid - ray.getOrigin()) / ndr;
+  if(t < 0.01) return false;
   hit = ray.pointAtParameter(t);
 
   Vec3f localHit = hit;
