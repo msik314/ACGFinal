@@ -66,6 +66,7 @@ bool RayTracer::CastRay(const Ray &ray, Hit &h, bool use_rasterized_patches, int
   
   
   if(portal_out != NULL) {
+    *portal_out = -1;
     for(int i = 0; i < mesh->numPortals() * 2; ++i) {
       Hit temp;
       if(mesh->getPortal(i / 2).getSide(i % 2).intersectRay(ray, temp)) {
@@ -411,6 +412,52 @@ void RayTracer::packMesh(float* &current) {
     normal = Vec3f(0,0,0);
     AddQuad(current,v1,v2,v3,v4,normal,p.color);
   }
+}
+
+bool RayTracer::getRaystoLight(const Face* light, const Vec3f& point, std::vector<Ray>& outRays){
+  unsigned int startSize = outRays.size();
+  
+  int portal = -1;
+  
+  //Test for direct ray
+  Vec3f lightCentroid = light->computeCentroid();
+  Vec3f dirToLightCentroid = lightCentroid-point;
+  double lightDist = dirToLightCentroid.Length();
+  dirToLightCentroid.Normalize();
+  Hit h;
+  Ray r(point, dirToLightCentroid);
+  bool res = CastRay(r, h, false, &portal);
+  if(res && portal < 0 && h.getT() >= lightDist - 0.01) {
+    outRays.push_back(r);
+  }
+  
+  for(int i = 0; i < mesh->numPortals() * 2; ++i) {
+    //Test to see if light in portal FOV
+    Vec3f tempCentroid = lightCentroid;
+    mesh->getPortal(i / 2).getSide(i % 2).transferPoint(tempCentroid);
+    dirToLightCentroid = tempCentroid-point;
+    lightDist = dirToLightCentroid.Length();
+    dirToLightCentroid.Normalize();
+    Hit portalH;
+    Ray p(point, dirToLightCentroid);
+    bool res = CastRay(p, portalH, false, &portal);
+    if(res && portal == i) {
+      //Test to see light
+      Hit throughH;
+      Vec3f recast = p.pointAtParameter(portalH.getT());
+      Vec3f reDir = dirToLightCentroid;
+      mesh->getPortal(i / 2).getSide(i % 2).transferPoint(recast);
+      mesh->getPortal(i / 2).getSide(i % 2).transferDirection(reDir);
+      double reDist = (lightCentroid - recast).Length();
+      Ray throughRay(recast, reDir);
+      res = CastRay(throughRay, throughH, false);
+      if(res && throughH.getT() >= reDist - 0.01) {
+        outRays.push_back(p);
+      }
+    }
+  }
+  
+  return (outRays.size() - startSize) > 0;
 }
 
 // ===========================================================================

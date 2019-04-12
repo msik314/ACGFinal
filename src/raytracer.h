@@ -10,6 +10,7 @@ class Mesh;
 class ArgParser;
 class Radiosity;
 class PhotonMapping;
+class Face;
 
 // ====================================================================
 // ====================================================================
@@ -51,7 +52,7 @@ public:
   void Init();
 
 private:
-
+  bool getRaystoLight(const Face* light, const Vec3f& point, std::vector<Ray>& outRays);
   void drawVBOs_a();
   void drawVBOs_b();
 
