@@ -16,9 +16,15 @@ class Face;
 // ====================================================================
 // This class manages the ray casting and ray tracing work.
 
-struct Vec2{
+struct Vec2 {
   int x;
   int y;
+};
+
+struct RayData {
+  Ray ray;
+  Hit hit;
+  double dist;
 };
 
 class Pixel {
@@ -27,7 +33,6 @@ public:
   Vec3f color;
 
 };
-
 
 class RayTracer {
 
@@ -52,7 +57,7 @@ public:
   void Init();
 
 private:
-  bool getRaystoLight(const Face* light, const Vec3f& point, std::vector<Ray>& outRays);
+  bool getRaystoLight(const Face* light, const Vec3f& point, std::vector<RayData>& outRays) const;
   void drawVBOs_a();
   void drawVBOs_b();
 

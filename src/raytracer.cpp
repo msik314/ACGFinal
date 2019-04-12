@@ -153,53 +153,61 @@ Vec3f RayTracer::TraceRay(Ray &ray, Hit &hit, int bounce_count, int portal_max) 
     Face *f = mesh->getLights()[i];
     Vec3f lightColor = f->getMaterial()->getEmittedColor() * f->getArea();
     Vec3f myLightColor;
-    Vec3f lightCentroid = f->computeCentroid();
-    Vec3f dirToLightCentroid = lightCentroid-point;
-    dirToLightCentroid.Normalize();
-    int numShadows = GLOBAL_args->mesh_data->num_shadow_samples;
-    int castLights = numShadows;
+//     Vec3f lightCentroid = f->computeCentroid();
+//     Vec3f dirToLightCentroid = lightCentroid-point;
+//     dirToLightCentroid.Normalize();
+//     int numShadows = GLOBAL_args->mesh_data->num_shadow_samples;
+//     int castLights = numShadows;
     
 
 
-    // ===========================================
-    // ASSIGNMENT:  ADD SHADOW & SOFT SHADOW LOGIC
-    // ===========================================
-    float distToLightCentroid = (lightCentroid-point).Length();
-    double percentLight;
-    if(numShadows < 1) {
-      percentLight = 1;
-    } else {
-      if(numShadows == 1){
-        Ray r(point, dirToLightCentroid);
-        Hit shadowH;
-        bool inShadow = CastRay(r, shadowH, false);
-        RayTree::AddShadowSegment(r, 0, shadowH.getT());
-        if(inShadow && shadowH.getT() < distToLightCentroid - 0.01) continue;
-      } else {
-        std::random_shuffle(order.begin(), order.end());
-        for(int  j = 0; j < numShadows; ++j) {
-          Vec3f randomPoint = f->RandomPoint(order[j].x, order[j].y, sampleDimension);
-          Vec3f dirToPoint = randomPoint-point;
-          float distToPoint = dirToPoint.Length();
-          dirToPoint.Normalize();
-          Ray r(point, dirToPoint);
-          Hit shadowH;
-          bool inShadow = CastRay(r, shadowH, false);
-          RayTree::AddShadowSegment(r, 0, shadowH.getT());
-          if(inShadow && shadowH.getT() < distToPoint - 0.01) --castLights;
-        }  
-      }
-      
-      percentLight = double(castLights) / numShadows;
-    }
+//     // ===========================================
+//     // ASSIGNMENT:  ADD SHADOW & SOFT SHADOW LOGIC
+//     // ===========================================
+//     float distToLightCentroid = (lightCentroid-point).Length();
+//     double percentLight;
+//     if(numShadows < 1) {
+//       percentLight = 1;
+//     } else {
+//       if(numShadows == 1){
+//         Ray r(point, dirToLightCentroid);
+//         Hit shadowH;
+//         bool inShadow = CastRay(r, shadowH, false);
+//         RayTree::AddShadowSegment(r, 0, shadowH.getT());
+//         if(inShadow && shadowH.getT() < distToLightCentroid - 0.01) continue;
+//       } else {
+//         std::random_shuffle(order.begin(), order.end());
+//         for(int  j = 0; j < numShadows; ++j) {
+//           Vec3f randomPoint = f->RandomPoint(order[j].x, order[j].y, sampleDimension);
+//           Vec3f dirToPoint = randomPoint-point;
+//           float distToPoint = dirToPoint.Length();
+//           dirToPoint.Normalize();
+//           Ray r(point, dirToPoint);
+//           Hit shadowH;
+//           bool inShadow = CastRay(r, shadowH, false);
+//           RayTree::AddShadowSegment(r, 0, shadowH.getT());
+//           if(inShadow && shadowH.getT() < distToPoint - 0.01) --castLights;
+//         }  
+//       }
+//       
+//       percentLight = double(castLights) / numShadows;
+//     }
+//     
+//      
+// 
+//     myLightColor = percentLight / float (distToLightCentroid*distToLightCentroid) * lightColor;
     
-     
-
-    myLightColor = percentLight / float (distToLightCentroid*distToLightCentroid) * lightColor;
+    
     
     // add the lighting contribution from this particular light at this point
     // (fix this to check for blockers between the light & this surface)
-    answer += m->Shade(ray,hit,dirToLightCentroid,myLightColor,args);
+    std::vector<RayData> rays;
+    getRaystoLight(f, point, rays);
+    
+    for(int i = 0; i < rays.size(); ++i) {
+      myLightColor = 1 / float (rays[i].dist * rays[i].dist) * lightColor;
+      answer += m->Shade(rays[i].ray, rays[i].hit, rays[i].ray.getDirection(), myLightColor, args);  
+    }
   }
       
   // ----------------------------------------------
@@ -414,7 +422,7 @@ void RayTracer::packMesh(float* &current) {
   }
 }
 
-bool RayTracer::getRaystoLight(const Face* light, const Vec3f& point, std::vector<Ray>& outRays){
+bool RayTracer::getRaystoLight(const Face* light, const Vec3f& point, std::vector<RayData>& outRays) const {
   unsigned int startSize = outRays.size();
   
   int portal = -1;
@@ -428,13 +436,14 @@ bool RayTracer::getRaystoLight(const Face* light, const Vec3f& point, std::vecto
   Ray r(point, dirToLightCentroid);
   bool res = CastRay(r, h, false, &portal);
   if(res && portal < 0 && h.getT() >= lightDist - 0.01) {
-    outRays.push_back(r);
+    outRays.push_back({r, h, lightDist});
   }
+  RayTree::AddShadowSegment(r, 0, h.getT());
   
   for(int i = 0; i < mesh->numPortals() * 2; ++i) {
     //Test to see if light in portal FOV
     Vec3f tempCentroid = lightCentroid;
-    mesh->getPortal(i / 2).getSide(i % 2).transferPoint(tempCentroid);
+    mesh->getPortal(i / 2).getSide((i + 1) % 2).transferPoint(tempCentroid);
     dirToLightCentroid = tempCentroid-point;
     lightDist = dirToLightCentroid.Length();
     dirToLightCentroid.Normalize();
@@ -452,8 +461,10 @@ bool RayTracer::getRaystoLight(const Face* light, const Vec3f& point, std::vecto
       Ray throughRay(recast, reDir);
       res = CastRay(throughRay, throughH, false);
       if(res && throughH.getT() >= reDist - 0.01) {
-        outRays.push_back(p);
+        outRays.push_back({p, throughH, lightDist + reDist});
       }
+      RayTree::AddShadowSegment(p, 0, portalH.getT());
+      RayTree::AddShadowSegment(throughRay, 0, throughH.getT());
     }
   }
   
