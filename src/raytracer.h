@@ -23,7 +23,6 @@ struct Vec2 {
 
 struct RayData {
   Ray ray;
-  Hit hit;
   double dist;
 };
 

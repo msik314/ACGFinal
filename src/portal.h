@@ -67,7 +67,7 @@ public:
   const PortalSide& getSide2() const { return side2; }
   const PortalSide& getSide(bool i) const { return i ? side2 : side1; }
   const PortalSide& getSide(int i) const { return i ? side2 : side1; }
-  
+  const PortalSide& getSide(unsigned int i) const { return i ? side2 : side1; }  
 private:
   PortalSide side1;
   PortalSide side2;

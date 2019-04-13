@@ -67,7 +67,7 @@ bool RayTracer::CastRay(const Ray &ray, Hit &h, bool use_rasterized_patches, int
   
   if(portal_out != NULL) {
     *portal_out = -1;
-    for(int i = 0; i < mesh->numPortals() * 2; ++i) {
+    for(unsigned int i = 0; i < mesh->numPortals() * 2; ++i) {
       Hit temp;
       if(mesh->getPortal(i / 2).getSide(i % 2).intersectRay(ray, temp)) {
         if(temp.getT() < h.getT()) {
@@ -206,7 +206,7 @@ Vec3f RayTracer::TraceRay(Ray &ray, Hit &hit, int bounce_count, int portal_max) 
     
     for(int i = 0; i < rays.size(); ++i) {
       myLightColor = 1 / float (rays[i].dist * rays[i].dist) * lightColor;
-      answer += m->Shade(rays[i].ray, rays[i].hit, rays[i].ray.getDirection(), myLightColor, args);  
+      answer += m->Shade(ray, hit, rays[i].ray.getDirection(), myLightColor, args);
     }
   }
       
@@ -436,11 +436,11 @@ bool RayTracer::getRaystoLight(const Face* light, const Vec3f& point, std::vecto
   Ray r(point, dirToLightCentroid);
   bool res = CastRay(r, h, false, &portal);
   if(res && portal < 0 && h.getT() >= lightDist - 0.01) {
-    outRays.push_back({r, h, lightDist});
+    outRays.push_back({r, lightDist});
   }
   RayTree::AddShadowSegment(r, 0, h.getT());
   
-  for(int i = 0; i < mesh->numPortals() * 2; ++i) {
+  for(unsigned int i = 0; i < mesh->numPortals() * 2; ++i) {
     //Test to see if light in portal FOV
     Vec3f tempCentroid = lightCentroid;
     mesh->getPortal(i / 2).getSide((i + 1) % 2).transferPoint(tempCentroid);
@@ -461,7 +461,7 @@ bool RayTracer::getRaystoLight(const Face* light, const Vec3f& point, std::vecto
       Ray throughRay(recast, reDir);
       res = CastRay(throughRay, throughH, false);
       if(res && throughH.getT() >= reDist - 0.01) {
-        outRays.push_back({p, throughH, lightDist + reDist});
+        outRays.push_back({p, lightDist + reDist});
       }
       RayTree::AddShadowSegment(p, 0, portalH.getT());
       RayTree::AddShadowSegment(throughRay, 0, throughH.getT());
