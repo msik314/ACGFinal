@@ -56,7 +56,7 @@ public:
   void Init();
 
 private:
-  bool getRaystoLight(const Face* light, const Vec3f& point, std::vector<RayData>& outRays) const;
+  bool getRaystoLight(const Face* light, const Vec3f& point, std::vector<RayData>& outRays, bool use_random_point = false) const;
   void drawVBOs_a();
   void drawVBOs_b();
 

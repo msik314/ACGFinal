@@ -201,12 +201,17 @@ Vec3f RayTracer::TraceRay(Ray &ray, Hit &hit, int bounce_count, int portal_max) 
     
     // add the lighting contribution from this particular light at this point
     // (fix this to check for blockers between the light & this surface)
+    int shadowSamples = GLOBAL_args->mesh_data->num_shadow_samples;
+    shadowSamples = shadowSamples < 1 ? 1 : shadowSamples;
     std::vector<RayData> rays;
-    getRaystoLight(f, point, rays);
-    
-    for(int i = 0; i < rays.size(); ++i) {
-      myLightColor = 1 / float (rays[i].dist * rays[i].dist) * lightColor;
-      answer += m->Shade(ray, hit, rays[i].ray.getDirection(), myLightColor, args);
+    for(int j = 0; j < shadowSamples; ++j) {
+      rays.clear();
+      getRaystoLight(f, point, rays, j != 0);
+      
+      for(int i = 0; i < rays.size(); ++i) {
+        myLightColor = 1 / (shadowSamples * rays[i].dist * rays[i].dist) * lightColor;
+        answer += m->Shade(ray, hit, rays[i].ray.getDirection(), myLightColor, args);
+      }
     }
   }
       
@@ -422,13 +427,13 @@ void RayTracer::packMesh(float* &current) {
   }
 }
 
-bool RayTracer::getRaystoLight(const Face* light, const Vec3f& point, std::vector<RayData>& outRays) const {
+bool RayTracer::getRaystoLight(const Face* light, const Vec3f& point, std::vector<RayData>& outRays, bool use_random_point) const {
   unsigned int startSize = outRays.size();
   
   int portal = -1;
   
   //Test for direct ray
-  Vec3f lightCentroid = light->computeCentroid();
+  Vec3f lightCentroid = use_random_point ? light->RandomPoint() : light->computeCentroid();
   Vec3f dirToLightCentroid = lightCentroid-point;
   double lightDist = dirToLightCentroid.Length();
   dirToLightCentroid.Normalize();
