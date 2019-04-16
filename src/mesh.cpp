@@ -382,7 +382,7 @@ void Mesh::Subdivision() {
   }
 }
 
-int Mesh::portalTriCount() const { return numPortalSides() * (8 * 3 + 12 + 12); }
+int Mesh::portalTriCount() const { return numPortalSides() * (8 * 3); }
 
 void Mesh::PackPortalMesh(float *&current) const {
   for (int i = 0; i < numPortalSides(); i++) {
@@ -444,55 +444,5 @@ void Mesh::PackPortalMesh(float *&current) const {
       -normal, -normal, -normal,
       wireframeColorBack,
       portalColor, portalColor, portalColor);
-
-    Vec3f dir = centroid;
-    dir.Normalize();
-    Ray ray(Vec3f(0, 0, 0), dir);
-
-    Vec3f hit;
-    side.intersectRay(ray, hit);
-
-    Vec3f right(1, 0, 0);
-    Vec3f up(0, -1, 0);
-    float width = 0.01f;
-
-    {
-      Vec3f start(0, 0, 0);
-      Vec3f end = hit;
-
-      Vec3f pos[8] = {
-        start + width * right + width * up,
-        start + width * right - width * up,
-        start - width * right + width * up,
-        start - width * right - width * up,
-        end + width * right + width * up,
-        end + width * right - width * up,
-        end - width * right + width * up,
-        end - width * right - width * up,
-      };
-
-      AddBox(current, pos, i % 2 ? Vec3f(1, 1, 0) : Vec3f(0, 0, 1));
-    }
-
-    {
-      Vec3f start = hit;
-      side.transferPoint(start);
-      Vec3f otherDir = dir;
-      side.transferDirection(otherDir);
-      Vec3f end = start + otherDir * 10;
-
-      Vec3f pos[8] = {
-        start + width * right + width * up,
-        start + width * right - width * up,
-        start - width * right + width * up,
-        start - width * right - width * up,
-        end + width * right + width * up,
-        end + width * right - width * up,
-        end - width * right + width * up,
-        end - width * right - width * up,
-      };
-
-      AddBox(current, pos, i % 2 ? Vec3f(1, 1, 0) : Vec3f(0, 0, 1));
-    }
   }
 }
