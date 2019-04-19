@@ -202,15 +202,24 @@ Vec3f RayTracer::TraceRay(Ray &ray, Hit &hit, int bounce_count, int portal_max) 
     // add the lighting contribution from this particular light at this point
     // (fix this to check for blockers between the light & this surface)
     int shadowSamples = GLOBAL_args->mesh_data->num_shadow_samples;
-    shadowSamples = shadowSamples < 1 ? 1 : shadowSamples;
     std::vector<RayData> rays;
-    for(int j = 0; j < shadowSamples; ++j) {
-      rays.clear();
-      getRaystoLight(f, point, rays, j != 0);
-      
-      for(int i = 0; i < rays.size(); ++i) {
-        myLightColor = 1 / (shadowSamples * rays[i].dist * rays[i].dist) * lightColor;
-        answer += m->Shade(ray, hit, rays[i].ray.getDirection(), myLightColor, args);
+    
+    if(shadowSamples < 1) {
+      Vec3f lightCentroid = f->computeCentroid();
+      Vec3f dirToLightCentroid = lightCentroid-point;
+      float distToLightCentroid = dirToLightCentroid.Length();
+      dirToLightCentroid.Normalize();
+      myLightColor = 1 / float (distToLightCentroid*distToLightCentroid) * lightColor;
+      answer += m->Shade(ray, hit, dirToLightCentroid, myLightColor, args);
+    } else {
+      for(int j = 0; j < shadowSamples; ++j) {
+        rays.clear();
+        getRaystoLight(f, point, rays, j != 0);
+        
+        for(int i = 0; i < rays.size(); ++i) {
+          myLightColor = 1 / (shadowSamples * rays[i].dist * rays[i].dist) * lightColor;
+          answer += m->Shade(ray, hit, rays[i].ray.getDirection(), myLightColor, args);
+        }
       }
     }
   }

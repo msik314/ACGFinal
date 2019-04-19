@@ -15,7 +15,9 @@ public:
   // CONSTRUCTOR & DESTRUCTOR
   Ray (const Vec3f &orig, const Vec3f &dir) {
     origin = orig; 
-    direction = dir; }
+    direction = dir;
+    direction.Normalize();
+  }
 
   // ACCESSORS
   const Vec3f& getOrigin() const { return origin; }
