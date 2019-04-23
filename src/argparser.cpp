@@ -77,6 +77,7 @@ void ArgParser::DefaultValues() {
   mesh_data->meshPointCount_allocated = 0;
   
   gloss = false;
+  debug = false;
 }
 
 
@@ -144,6 +145,8 @@ ArgParser::ArgParser(int argc, const char *argv[], MeshData *_mesh_data) {
       mesh_data->gather_indirect = true;
     } else if (std::string(argv[i]) == std::string("-gloss")) {
       gloss = true;
+    } else if (std::string(argv[i]) == std::string("-debug")) {
+      debug = true;
     } else if (std::string(argv[i]) == std::string("-portal_recursion_depth")) {
       i++; assert (i < argc); 
       mesh_data->portal_recursion_depth = atoi(argv[i]);

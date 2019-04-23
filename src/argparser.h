@@ -60,7 +60,7 @@ public:
   PhotonMapping *photon_mapping;
   BoundingBox *bbox;
   bool gloss;
-
+  bool debug;
 
 };
 

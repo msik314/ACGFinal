@@ -52,6 +52,7 @@ void Animate() {
   if (GLOBAL_args->mesh_data->raytracing_animation) {
     // draw 100 pixels and then refresh the screen and handle any user input
     for (int i = 0; i < 10000; i++) {
+      if(GLOBAL_args->debug && (i + 1) % 100 == 0) std::cout << i + 1 << std::endl;
       if (!DrawPixel()) {
         GLOBAL_args->mesh_data->raytracing_animation = false;
         break;
