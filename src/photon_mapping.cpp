@@ -10,9 +10,11 @@
 #include "kdtree.h"
 #include "utils.h"
 #include "raytracer.h"
+#include "portal.h"
 
 #define ENERGY_CUTOFF 0.01
 #define ITER_MAX 32
+#define GUESS_CONSTANT 1
 
 static inline double randRange() {
   return 2 * GLOBAL_args->rand() - 1;
@@ -55,16 +57,37 @@ void PhotonMapping::TracePhoton(const Vec3f &position, const Vec3f &direction,
   // One optimization is to *not* store the first bounce, since that
   // direct light can be efficiently computed using classic ray
   // tracing.
+  
   if(iter > ITER_MAX) return;
   
-  Ray ray(position, direction);
-  Hit hit;
-  bool h = raytracer->CastRay(ray, hit, false);
-  if(!h) return;
+  int recDepth = GLOBAL_args->mesh_data->portal_recursion_depth;
+  if(recDepth < 0) recDepth = 0;
   
-  Vec3f p = ray.pointAtParameter(hit.getT());
+  Vec3f finalDirection = direction;
+  Vec3f finalOrigin = position;
+  Vec3f hitPoint;
+  Hit hit;
+  for(int i = recDepth; i >= 0; ++i) {
+    Hit h;
+    int portal = -1;
+    register int* pOut = i ? &portal : NULL;
+    Ray r(finalOrigin, finalDirection);
+    bool res = raytracer->CastRay(r, h, false, pOut);
+    if(!res) return;
+    
+    hitPoint = r.pointAtParameter(h.getT());
+    if(portal < 0) {
+      hit = h;
+      break;
+    }
+    
+    finalOrigin = hitPoint;
+    mesh->getPortalSide(portal).transferPoint(finalOrigin);
+    mesh->getPortalSide(portal).transferDirection(finalDirection);
+  }
+  
   if(iter > 0) {
-    Photon photon(p, direction, energy, iter);
+    Photon photon(hitPoint, finalDirection, energy, iter);
     kdtree->AddPhoton(photon);
   }
   Vec3f reflectiveColor = hit.getMaterial()->getReflectiveColor();
@@ -74,9 +97,9 @@ void PhotonMapping::TracePhoton(const Vec3f &position, const Vec3f &direction,
   
   register double rLength = reflectiveEnergy.Length();
   
-  if(rLength > initialEnergy * ENERGY_CUTOFF && GLOBAL_args->rand() * initialEnergy <= rLength) {
-    Vec3f reflectedRay = direction - 2 * direction.Dot3(hit.getNormal()) * hit.getNormal();
-    TracePhoton(p, reflectedRay, reflectiveEnergy, iter + 1);
+  if(rLength > initialEnergy * ENERGY_CUTOFF) {
+    Vec3f reflectedRay = finalDirection - 2 * finalDirection.Dot3(hit.getNormal()) * hit.getNormal();
+    TracePhoton(hitPoint, reflectedRay, reflectiveEnergy, iter + 1);
   } else {
     Vec3f diffuseRay = Vec3f(randRange(), randRange(), randRange());
     while(diffuseRay.Dot3(diffuseRay) < 0.0001) {
@@ -85,7 +108,7 @@ void PhotonMapping::TracePhoton(const Vec3f &position, const Vec3f &direction,
     
     diffuseRay.Normalize();
     if(diffuseRay.Dot3(hit.getNormal()) < 0) diffuseRay *= -1;
-    TracePhoton(p, diffuseRay, diffuseEnergy, iter + 1);
+    TracePhoton(hitPoint, diffuseRay, diffuseEnergy, iter + 1);
   }
 }
 
@@ -171,7 +194,7 @@ Vec3f PhotonMapping::GatherIndirect(const Vec3f &point, const Vec3f &normal, con
   Vec3f energy;
   double maxDistSq;
 
-  double guess = 0.5 * (double)numToCollect / kdtree->numPhotons();
+  double guess = GUESS_CONSTANT * (double)numToCollect / kdtree->numPhotons();
   bool retry;
   do {
     retry = false;
