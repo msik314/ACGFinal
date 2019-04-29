@@ -47,7 +47,7 @@ background_color 0.2 0.1 0.6
 
 PerspectiveCamera {
   camera_position    < 5.3406, 2.02057, 5.92681 >
-  point_of_interest  < 1.3208, 0.988196, 0.955876 >
+  point_of_interest  < 5.0, 2.5, 0.0 >
   up                 < 0, 1, 0 >
   angle              20
 }
