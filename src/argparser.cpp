@@ -58,6 +58,7 @@ void ArgParser::DefaultValues() {
   
   //PORTAL PARAMETERS
   mesh_data->portal_recursion_depth = 0;
+  mesh_data->portal_shadow_recursion_depth = 0;
   mesh_data->portal_tint = {1, 1, 1};
   
   // PHOTON MAPPING PARAMETERS
@@ -145,8 +146,11 @@ ArgParser::ArgParser(int argc, const char *argv[], MeshData *_mesh_data) {
     } else if (std::string(argv[i]) == std::string("-gloss")) {
       gloss = true;
     } else if (std::string(argv[i]) == std::string("-portal_recursion_depth")) {
-      i++; assert (i < argc); 
+      i++; assert (i < argc);
       mesh_data->portal_recursion_depth = atoi(argv[i]);
+    } else if (std::string(argv[i]) == std::string("-portal_shadow_recursion_depth")) {
+      i++; assert (i < argc);
+      mesh_data->portal_shadow_recursion_depth = atoi(argv[i]);
     } else if (std::string(argv[i]) == std::string("-portal_tint")) {
       i++; assert (i < argc);
       float r = atof(argv[i]);

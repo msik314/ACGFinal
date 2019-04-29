@@ -427,28 +427,47 @@ void RayTracer::packMesh(float* &current) {
   }
 }
 
+void RayTracer::getRaysToPoint(const Vec3f & source, const Vec3f & target, std::vector<Ray>& outRays, int maxDepth = 1) const {
+  outRays.clear();
+
+  Vec3f initDirection = target - source;
+  initDirection.Normalize();
+  outRays.push_back(Ray(source, initDirection));
+
+  for (int d = 0; d < maxDepth; d++) {
+    
+  }
+}
+
+void getRaysToLightPoint(const Vec3f& target, const Vec3f& source, std::vector<RayData>& outRays, const int lastSide, int depth) {
+  
+  Vec3f dirToTarget = target - source;
+  double lightDist = dirToTarget.Length();
+  dirToTarget /= lightDist;
+
+  Hit h;
+  Ray r(source, dirToTarget);
+  int portal = -1;
+  bool res = CastRay(r, h, false, &portal);
+  if (res && portal < 0 && h.getT() >= lightDist - 0.01) {
+    outRays.push_back({ r, lightDist });
+  }
+
+  RayTree::AddShadowSegment(r, 0, h.getT());
+}
+
 bool RayTracer::getRaystoLight(const Face* light, const Vec3f& point, std::vector<RayData>& outRays, bool use_random_point) const {
   unsigned int startSize = outRays.size();
   
-  int portal = -1;
-  
-  //Test for direct ray
-  Vec3f lightCentroid = use_random_point ? light->RandomPoint() : light->computeCentroid();
-  Vec3f dirToLightCentroid = lightCentroid-point;
-  double lightDist = dirToLightCentroid.Length();
-  dirToLightCentroid.Normalize();
-  Hit h;
-  Ray r(point, dirToLightCentroid);
-  bool res = CastRay(r, h, false, &portal);
-  if(res && portal < 0 && h.getT() >= lightDist - 0.01) {
-    outRays.push_back({r, lightDist});
-  }
-  RayTree::AddShadowSegment(r, 0, h.getT());
-  
-  for(unsigned int i = 0; i < mesh->numPortals() * 2; ++i) {
+  int maxDepth = mymin(GLOBAL_args->mesh_data->portal_shadow_recursion_depth, GLOBAL_args->mesh_data->portal_recursion_depth);
+
+  Vec3f target = use_random_point ? light->RandomPoint() : light->computeCentroid();
+  getRaysToLightPoint(target, point, outRays, -1, maxDepth);
+
+  for(unsigned int i = 0; i < mesh->numPortalSides(); ++i) {
     //Test to see if light in portal FOV
     Vec3f tempCentroid = lightCentroid;
-    mesh->getPortal(i / 2).getSide((i + 1) % 2).transferPoint(tempCentroid);
+    mesh->getPortalSide(i).transferPoint(tempCentroid);
     dirToLightCentroid = tempCentroid-point;
     lightDist = dirToLightCentroid.Length();
     dirToLightCentroid.Normalize();

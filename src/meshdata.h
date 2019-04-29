@@ -65,6 +65,7 @@ typedef struct MeshData {
   
   // PORTAL PARAMETERS
   int portal_recursion_depth;
+  int portal_shadow_recursion_depth;
   Vec3f portal_tint;
   
   // PHOTON MAPPING PARAMETERS

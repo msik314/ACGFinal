@@ -56,6 +56,7 @@ public:
   void Init();
 
 private:
+  void getRaysToPoint(const Vec3f& source, const Vec3f& target, std::vector<Ray>& outRays, int maxDepth = 1) const;
   bool getRaystoLight(const Face* light, const Vec3f& point, std::vector<RayData>& outRays, bool use_random_point = false) const;
   void drawVBOs_a();
   void drawVBOs_b();
