@@ -12,7 +12,7 @@ class Ray;
 class Hit;
 class RayTracer;
 class Radiosity;
-
+struct PhotonData;
 // =========================================================================
 // The basic class to shoot photons within the scene and collect and
 // process the nearest photons for use in the raytracer
@@ -55,6 +55,8 @@ class PhotonMapping {
   RayTracer *raytracer;
   Radiosity *radiosity;
   double initialEnergy;
+  
+  void GatherThroughPortals(const Vec3f &point, const Vec3f &normal, const Vec3f &direction_from, double guess, const Vec3f& size, std::vector<PhotonData>& outPhotons) const;
 };
 
 // =========================================================================

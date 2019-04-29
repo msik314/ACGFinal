@@ -41,22 +41,20 @@ void PhotonMapping::Clear() {
 }
 
 
+struct PhotonData {
+  Photon photon;
+  double dist;
+};
+
+bool operator< (const PhotonData& p1, const PhotonData& p2) {
+  return p1.dist < p2.dist;
+}
+
 // ========================================================================
 // Recursively trace a single photon
 
 void PhotonMapping::TracePhoton(const Vec3f &position, const Vec3f &direction, 
                 const Vec3f &energy, int iter) {
-
-  // ==============================================
-  // ASSIGNMENT: IMPLEMENT RECURSIVE PHOTON TRACING
-  // ==============================================
-
-  // Trace the photon through the scene.  At each diffuse or
-  // reflective bounce, store the photon in the kd tree.
-
-  // One optimization is to *not* store the first bounce, since that
-  // direct light can be efficiently computed using classic ray
-  // tracing.
   
   if(iter > ITER_MAX) return;
   
@@ -169,6 +167,44 @@ bool closest_photon(const std::pair<Photon,float> &a, const std::pair<Photon,flo
 
 
 // ======================================================================
+
+void PhotonMapping::GatherThroughPortals(const Vec3f &point, const Vec3f &normal, const Vec3f &direction_from, double guess, const Vec3f& size, std::vector<PhotonData>& outPhotons) const {
+  outPhotons.clear();
+  std::vector<Photon> photons;
+  for(int i = 0; i < mesh->numPortals(); ++i) {
+    Vec3f p = point;
+    mesh->getPortalSide(i).transferPoint(p);
+    BoundingBox bb(p - guess * 0.5 * size, p + guess * 0.5 * size);
+    Vec3f min = bb.getMin();
+    Vec3f max = bb.getMax();
+    Vec3f centroid = mesh->getPortalSide(i).getCentroid();
+    if(centroid.x() <= min.x() || centroid.x() >= max.x() ||
+        centroid.y() <= min.y() || centroid.y() >= max.y() ||
+        centroid.z() <= min.z() || centroid.z() >= max.z()) continue;
+    
+    photons.clear();
+    
+    Vec3f n = normal;
+    mesh->getPortalSide(i).transferDirection(n);
+    
+    kdtree->CollectPhotonsInBox(bb, photons);
+    
+    for(int j = 0; j < photons.size(); ++j) {
+      register double minSize = size.x();
+      if(minSize > size.y()) minSize = size.y();
+      if(minSize > size.z()) minSize = size.z();
+      register double dist = (photons[j].getPosition() - p).LengthSq();
+      if(dist <= guess * minSize * guess * minSize * 0.25 &&
+          photons[j].getDirectionFrom().Dot3(n) < 0) {
+          Ray r(photons[j].getPosition(), p - photons[j].getPosition());
+          Vec3f res;
+          if(mesh->getPortalSide(i).getOtherSide()->intersectRay(r, res))outPhotons.push_back({photons[j], dist});
+          outPhotons.push_back({photons[j], dist});
+      }
+    }
+  }
+}
+
 Vec3f PhotonMapping::GatherIndirect(const Vec3f &point, const Vec3f &normal, const Vec3f &direction_from) const {
 
 
@@ -176,63 +212,43 @@ Vec3f PhotonMapping::GatherIndirect(const Vec3f &point, const Vec3f &normal, con
     std::cout << "WARNING: Photons have not been traced throughout the scene." << std::endl;
     return Vec3f(0,0,0); 
   }
-
-  // ================================================================
-  // ASSIGNMENT: GATHER THE INDIRECT ILLUMINATION FROM THE PHOTON MAP
-  // ================================================================
-
-  // collect the closest args->num_photons_to_collect photons
-  // determine the radius that was necessary to collect that many photons
-  // average the energy of those photons over that radius
-  
-  // return the color
   
   unsigned int numToCollect = GLOBAL_args->mesh_data->num_photons_to_collect;
   std::vector<Photon> photons;
+  std::vector<PhotonData> portalPhotons;
   Vec3f size = kdtree->getMax() - kdtree->getMin();
-  unsigned int count;
-  Vec3f energy;
-  double maxDistSq;
+  
+  Vec3f energy(0, 0, 0);
+  double maxDistSq = 0;
 
   double guess = GUESS_CONSTANT * (double)numToCollect / kdtree->numPhotons();
-  bool retry;
   do {
-    retry = false;
-    for(int _ = 0; _ < 32; ++ _) {
-      guess *= 2;
-      BoundingBox bb(point - guess * 0.5 * size, point + guess * 0.5 * size);
-      count = (unsigned int)kdtree->CountPhotonsInBox(bb);
-      
-      if(count >= numToCollect) {
-        break;
-      }
-    }
-    
-    photons.reserve(count);
+    guess *= 2;
     BoundingBox bb(point - guess * 0.5 * size, point + guess * 0.5 * size);
     kdtree->CollectPhotonsInBox(bb, photons);
     
-    energy = Vec3f(0, 0, 0);
-    maxDistSq = 0;
-    unsigned int failures = 0;
-    for(unsigned int i = 0; i < numToCollect + failures; ++i) {
-      if((photons[i].getPosition() - point).LengthSq() <= guess * guess / 4 &&
-          photons[i].getDirectionFrom().Dot3(normal) < 0) {
-        
-        energy += photons[i].getEnergy();
-        register double dist = (photons[i].getPosition() - point).LengthSq();
-        maxDistSq = dist > maxDistSq ? dist : maxDistSq;
-      } else {
-        ++failures;
-        if(failures + numToCollect > photons.size()) {
-          retry = true;
-          break;
-        }
-      }
+    if(GLOBAL_args->mesh_data->portal_recursion_depth > 0) GatherThroughPortals(point, normal, direction_from, guess, size, portalPhotons);
+    portalPhotons.reserve(portalPhotons.size() + photons.size());
+    for(int i = 0; i < portalPhotons.size(); ++i) {
+      register double dist = (photons[i].getPosition() - point).LengthSq();
+      register double minSize = size.x();
+      if(minSize > size.y()) minSize = size.y();
+      if(minSize > size.z()) minSize = size.z();
+      if(dist <= guess * minSize * guess * minSize * 0.25 &&
+          photons[i].getDirectionFrom().Dot3(normal) < 0) portalPhotons.push_back({photons[i], dist});
     }
     
-  } while(retry);
+  
+  if(portalPhotons.size() < numToCollect) continue;
+  
+  std::sort(portalPhotons.begin(), portalPhotons.end());
+  for(int i = 0; i < numToCollect; ++i){
+    energy += portalPhotons[i].photon.getEnergy();
+  }
+  maxDistSq = portalPhotons[numToCollect - 1].dist;
   return 1 / (M_PI * maxDistSq) * energy;
+  
+  } while(true);
 }
 
 // ======================================================================

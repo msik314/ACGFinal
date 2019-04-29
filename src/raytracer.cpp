@@ -153,54 +153,7 @@ Vec3f RayTracer::TraceRay(Ray &ray, Hit &hit, int bounce_count, int portal_max) 
     Face *f = mesh->getLights()[i];
     Vec3f lightColor = f->getMaterial()->getEmittedColor() * f->getArea();
     Vec3f myLightColor;
-//     Vec3f lightCentroid = f->computeCentroid();
-//     Vec3f dirToLightCentroid = lightCentroid-point;
-//     dirToLightCentroid.Normalize();
-//     int numShadows = GLOBAL_args->mesh_data->num_shadow_samples;
-//     int castLights = numShadows;
-    
 
-
-//     // ===========================================
-//     // ASSIGNMENT:  ADD SHADOW & SOFT SHADOW LOGIC
-//     // ===========================================
-//     float distToLightCentroid = (lightCentroid-point).Length();
-//     double percentLight;
-//     if(numShadows < 1) {
-//       percentLight = 1;
-//     } else {
-//       if(numShadows == 1){
-//         Ray r(point, dirToLightCentroid);
-//         Hit shadowH;
-//         bool inShadow = CastRay(r, shadowH, false);
-//         RayTree::AddShadowSegment(r, 0, shadowH.getT());
-//         if(inShadow && shadowH.getT() < distToLightCentroid - 0.01) continue;
-//       } else {
-//         std::random_shuffle(order.begin(), order.end());
-//         for(int  j = 0; j < numShadows; ++j) {
-//           Vec3f randomPoint = f->RandomPoint(order[j].x, order[j].y, sampleDimension);
-//           Vec3f dirToPoint = randomPoint-point;
-//           float distToPoint = dirToPoint.Length();
-//           dirToPoint.Normalize();
-//           Ray r(point, dirToPoint);
-//           Hit shadowH;
-//           bool inShadow = CastRay(r, shadowH, false);
-//           RayTree::AddShadowSegment(r, 0, shadowH.getT());
-//           if(inShadow && shadowH.getT() < distToPoint - 0.01) --castLights;
-//         }  
-//       }
-//       
-//       percentLight = double(castLights) / numShadows;
-//     }
-//     
-//      
-// 
-//     myLightColor = percentLight / float (distToLightCentroid*distToLightCentroid) * lightColor;
-    
-    
-    
-    // add the lighting contribution from this particular light at this point
-    // (fix this to check for blockers between the light & this surface)
     int shadowSamples = GLOBAL_args->mesh_data->num_shadow_samples;
     std::vector<RayData> rays;
     
@@ -229,10 +182,6 @@ Vec3f RayTracer::TraceRay(Ray &ray, Hit &hit, int bounce_count, int portal_max) 
   Vec3f reflectiveColor = m->getReflectiveColor();
 
 
-
-  // =================================
-  // ASSIGNMENT:  ADD REFLECTIVE LOGIC
-  // =================================
   if(bounce_count > 0)
   {
     Vec3f ri = ray.getDirection();
@@ -264,12 +213,6 @@ Vec3f VisualizeTraceRay(double i, double j) {
   // compute and set the pixel color
   int max_d = mymax(GLOBAL_args->mesh_data->width,GLOBAL_args->mesh_data->height);
   Vec3f color;
-  
-
-
-  // ==================================
-  // ASSIGNMENT: IMPLEMENT ANTIALIASING
-  // ==================================
   
 
   // Here's what we do with a single sample per pixel:

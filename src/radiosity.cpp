@@ -104,11 +104,6 @@ void Radiosity::ComputeFormFactors() {
   formfactors = new float[num_faces*num_faces];
   int samples = GLOBAL_args->mesh_data->num_form_factor_samples;
 
-
-  // =====================================
-  // ASSIGNMENT:  COMPUTE THE FORM FACTORS
-  // =====================================
-  
   for(int i = 0; i < num_faces * num_faces; ++i) {
     formfactors[i] = 0;
   }
@@ -159,10 +154,6 @@ float Radiosity::Iterate() {
   if (formfactors == NULL) 
     ComputeFormFactors();
   assert (formfactors != NULL);
-
-  // ==========================================
-  // ASSIGNMENT:  IMPLEMENT RADIOSITY ALGORITHM
-  // ==========================================
   
   int index = max_undistributed_patch;
   Vec3f dbi = getUndistributed(index);
