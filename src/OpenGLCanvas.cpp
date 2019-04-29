@@ -152,10 +152,11 @@ void OpenGLCanvas::mousemotionCB(GLFWwindow *window, double x, double y) {
     if (altKeyPressed) {
       GLOBAL_args->mesh->camera->dollyCamera(y-mouseY);    
     }
+	mesh_data->raytracing_animation = false;
   }
+
   mouseX = x;
   mouseY = y;
-  mesh_data->raytracing_animation = false;
 }
 
 // ========================================================
