@@ -123,7 +123,7 @@ void OpenGLCanvas::mousebuttonCB(GLFWwindow *window, int which_button, int actio
       middleMousePressed = false;
     }
   }
-}	
+}  
 
 // ========================================================
 // Callback function for mouse drag
@@ -152,7 +152,7 @@ void OpenGLCanvas::mousemotionCB(GLFWwindow *window, double x, double y) {
     if (altKeyPressed) {
       GLOBAL_args->mesh->camera->dollyCamera(y-mouseY);    
     }
-	mesh_data->raytracing_animation = false;
+  mesh_data->raytracing_animation = false;
   }
 
   mouseX = x;
@@ -317,12 +317,19 @@ void OpenGLCanvas::keyboardCB(GLFWwindow* window, int key, int scancode, int act
       mesh_data->intersect_backfacing = !mesh_data->intersect_backfacing;
       break;
     }
-
-        /*
-    case 'b':  case 'B':
-      mesh_data->bounding_box = !mesh_data->bounding_box;
+    
+    // PORTALS
+    
+    case '[': {
+      if (mesh_data->portal_recursion_depth > 0) {
+        mesh_data->portal_recursion_depth--;
+      }
       break;
-        */
+    }
+    case ']': {
+      mesh_data->portal_recursion_depth++;
+      break;
+    }
     
     case 'q':  case 'Q': {
       exit(0);
@@ -460,7 +467,7 @@ int HandleGLError(const std::string &message, bool ignore) {
   while ((error = glGetError()) != GL_NO_ERROR) {
     if (!ignore) {
       if (message != "") {
-	std::cout << "[" << message << "] ";
+  std::cout << "[" << message << "] ";
       }
       std::cout << "GL ERROR(" << i << ") " << WhichGLError(error) << std::endl;
     }
